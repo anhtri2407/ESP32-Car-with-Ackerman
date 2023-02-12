@@ -3,6 +3,7 @@
         Created: 10 Feb 2023
         Author: Anh Tri - STEM CLUB
         Device's Controller used: Bluetooth RC Joystick Controll - Andi.Co
+        Status: Updating
 */
 
 #include <Servo.h>
