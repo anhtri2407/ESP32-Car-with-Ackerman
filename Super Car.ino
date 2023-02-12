@@ -1,98 +1,79 @@
-#include <Servo.h>
-#include "BluetoothSerial.h"
 /*
-        Xe Siêu Cấp Vũ Trụ
+        ESP32 Car with Ackerman Steering Mechanism
         Created: 10 Feb 2023
-        Author: STEM CLUB
+        Author: Anh Tri - STEM CLUB
+        Device's Controller used: Bluetooth RC Joystick Controll - Andi.Co
 */
 
-//Bluetooth setup check if enabled
+#include <Servo.h>
+#include "BluetoothSerial.h"
+
+//enable classic bluetooth if not enabled & bluetooth setup
 #if !defined(CONFIG_BT_ENABLED) || !defined(CONFIG_BLUEDROID_ENABLED)
 #error Bluetooth is not enabled! Please run `make menuconfig` to and enable it
 #endif
-
-#if CONFIG_FREERTOS_UNICORE
-static const BaseType_t app_cpu = 0;
-#else
-static const BaseType_t app_cpu = 1;
-#endif
-
-//Servo setup
-const int servo_pin = 15;
-
-//Motor setup
-// const int PWM, AIN1, AIN2;
-
-
-Servo Servo;
 BluetoothSerial BTSerial;
 
-void moveServo(void * parameter) {
+//initialize variables
+short temp, speed, angle; bool is_back_pressed;
+
+//servo setup
+const int servo_pin = 15;
+Servo Servo;
+
+//motor setup
+// const int PWM, AIN1, AIN2;
+
+void read_variables(void * parameter) {
   while (true) {
-    for (int angle = 0; angle < 180; angle++) {
-        Servo.write(angle);
-        Serial.println("Current Servo's angle written: " + String(angle));
-      }
-      vTaskDelay(100 / portTICK_PERIOD_MS);
-      for (int angle = 180; angle > 0; angle--) {
-        Servo.write(angle);
-        Serial.println("Current Servo's angle written: " + String(angle));
-      }
-      vTaskDelay(100 / portTICK_PERIOD_MS);
+    if (BTSerial.available()) {
+      temp = BTSerial.read(); //useless variable
+      speed = BTSerial.read();
+      angle = BTSerial.read();
+      is_back_pressed = BTSerial.read();
+    // Serial.println("TEMP: " + String(temp) + ", SPEED: " + String(speed) + ", ANGLE: " + String(angle) + ", IS_BACKED_PRESSED: " + String(is_back_pressed)); //Chỉ uncomment khi muốn debug
+    }
+    vTaskDelay(3 / portTICK_PERIOD_MS);
   }
 }
 
-// void counting(void * parameter) {
-//   while (true) {
-//       for (int i = 0; i <= 5; i++) {
-//       Serial.println(i);
-//       vTaskDelay(1000 / portTICK_PERIOD_MS);
-//     }
-//   }
-// }
+void navigate_servo(void * parameter) {
+  while (true) {
+      Servo.write(angle);
+      // Serial.println("Current Servo's angle written: " + String(angle)); //Chỉ uncomment khi muốn debug
+      // vTaskDelay(3 / portTICK_PERIOD_MS);
+  }
+}
+
+void driving(void * parameter) {
+  while (true) {
+    if (is_back_pressed) {
+      //do something here
+    } else {
+      //do something here
+    }
+  }
+}
 
 void setup() {
   Serial.begin(115200);
-  BTSerial.begin("ESP32 Bluetooth Test");
-  Servo.attach(servo_pin);
-  Servo.write(90);
-  xTaskCreatePinnedToCore(moveServo, 
-                          "Move Servo", 
-                          2048, 
+  BTSerial.begin("MRC's Car");
+  // Servo.attach(servo_pin);
+  // Servo.write(90);
+  xTaskCreatePinnedToCore(read_variables,
+                          "Read Variables",
+                          2048,
+                          NULL,
+                          12,
+                          NULL,
+                          0); //using core 0 to reading variables from Bluetooth's signal
+  xTaskCreatePinnedToCore(navigate_servo, 
+                          "Navigate Servo", 
+                          1024, 
                           NULL, 
                           10, 
                           NULL, 
-                          0);
-  // xTaskCreate(counting,
-  //             "Couting Function",
-  //             1000,
-  //             NULL,
-  //             10,
-  //             NULL);
+                          1); //using core 1 to navigating servo's direction
 }
 
-void loop() {
-  // put your main code here, to run repeatedly:
-  // Serial.println(xPortGetCoreID());
-  if (Serial.available()) {
-    BTSerial.write(Serial.read());
-  }
-  if (BTSerial.available()) {
-    Serial.write(BTSerial.read());
-  }
-  delay(20);
-}
-  Servo.attach(servo_pin);
-  Servo.write(90);
-  xTaskCreatePinnedToCore(moveServo, 
-                          "Move Servo", 
-                          1000, 
-                          NULL, 
-                          10, 
-                          NULL, 
-                          app_cpu);
-}
-
-// void setup() {}
-
-// void loop() {}
+void loop() {}
